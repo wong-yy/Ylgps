@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>黃老師的奇妙天空 - 造型雲朵生成器</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Microsoft JhengHei', 'PingFang TC', 'Comic Sans MS', sans-serif;
+        }
+
+        #sky {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, #1a82f7 0%, #2f9fff 40%, #87cefa 100%);
+            overflow: hidden;
+        }
+
+        /* 繽紛活潑的標題設計 */
+        #app-title {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            font-size: 48px;
+            font-weight: 900;
+            display: flex;
+            gap: 4px;
+            text-shadow: 
+                -3px -3px 0 #fff,  
+                 3px -3px 0 #fff,
+                -3px  3px 0 #fff,
+                 3px  3px 0 #fff,
+                 0px  8px 15px rgba(0,0,0,0.25);
+            pointer-events: none;
+            letter-spacing: 2px;
+        }
+
+        #app-title span {
+            display: inline-block;
+            animation: titleBounce 2s infinite alternate ease-in-out;
+        }
+
+        #app-title span:nth-child(1) { color: #FF595E; animation-delay: 0.0s; }
+        #app-title span:nth-child(2) { color: #FFCA3A; animation-delay: 0.1s; }
+        #app-title span:nth-child(3) { color: #8AC926; animation-delay: 0.2s; }
+        #app-title span:nth-child(4) { color: #1982C4; animation-delay: 0.3s; }
+        #app-title span:nth-child(5) { color: #6A4C93; animation-delay: 0.4s; }
+        #app-title span:nth-child(6) { color: #FF924C; animation-delay: 0.5s; }
+        #app-title span:nth-child(7) { color: #52A675; animation-delay: 0.6s; }
+        #app-title span:nth-child(8) { color: #4361EE; animation-delay: 0.7s; }
+
+        @keyframes titleBounce {
+            0% { transform: translateY(0px) rotate(-3deg); }
+            100% { transform: translateY(-12px) rotate(3deg); }
+        }
+
+        /* 音訊控制按鈕區 */
+        #audio-controls {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            z-index: 1001;
+            display: flex;
+            gap: 15px;
+        }
+
+        .audio-btn {
+            background: rgba(255, 255, 255, 0.8);
+            border: 2px solid #fff;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #1a82f7;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+
+        .audio-btn:hover {
+            transform: scale(1.1);
+            background: #fff;
+        }
+
+        .audio-btn.muted {
+            color: #ff595e;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        #ui-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.25);
+            padding: 15px 25px;
+            border-radius: 50px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            width: 90%;
+            max-width: 600px;
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+
+        #item-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            outline: none;
+            background: rgba(255,255,255,0.9);
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        #submit-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 30px;
+            background-color: #fff;
+            color: #1a82f7;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            white-space: nowrap;
+        }
+
+        #submit-btn:hover {
+            background-color: #f0f8ff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+
+        .cloud-wrapper {
+            position: absolute;
+            /* Changed from -300px to -120px so it enters the screen much faster */
+            left: -120px;
+            --cloud-scale: 1; 
+            animation: floatX linear infinite;
+        }
+
+        .cloud-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: floatY ease-in-out infinite;
+        }
+
+        .cloud-shape {
+            color: #ffffff;
+            font-size: 108px;
+            filter: 
+                drop-shadow(0px 8px 10px rgba(255, 255, 255, 0.95)) 
+                drop-shadow(0px -5px 12px rgba(255, 255, 255, 0.85))
+                drop-shadow(8px 0px 10px rgba(255, 255, 255, 0.8))
+                blur(1.5px);
+            opacity: 0.95;
+        }
+
+        .cloud-label {
+            margin-top: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 1);
+            text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        /* Adjusted animation distance to make the looping tighter and more noticeable */
+        @keyframes floatX {
+            0% { transform: translateX(0) scale(var(--cloud-scale)); }
+            100% { transform: translateX(calc(100vw + 250px)) scale(var(--cloud-scale)); }
+        }
+
+        @keyframes floatY {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-30px); }
+        }
+
+        @media (max-width: 600px) {
+            #app-title { font-size: 32px; top: 25px; gap: 2px; }
+            #audio-controls { top: 15px; right: 15px; gap: 10px; }
+            .audio-btn { width: 40px; height: 40px; font-size: 16px; }
+            #ui-container { bottom: 15px; padding: 10px 15px; }
+            #item-input { padding: 10px 15px; font-size: 14px; }
+            #submit-btn { padding: 10px 20px; font-size: 14px; }
+            .cloud-shape { font-size: 81px; }
+            .cloud-label { font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sky"></div>
+
+    <h1 id="app-title">
+        <span>黃</span><span>老</span><span>師</span><span>的</span><span>奇</span><span>妙</span><span>天</span><span>空</span>
+    </h1>
+
+    <div id="audio-controls">
+        <button id="bgm-btn" class="audio-btn muted" title="切換背景音樂">
+            <i class="fa-solid fa-music"></i>
+        </button>
+        <button id="sfx-btn" class="audio-btn" title="切換音效">
+            <i class="fa-solid fa-volume-high"></i>
+        </button>
+    </div>
+
+    <div id="ui-container">
+        <input type="text" id="item-input" placeholder="輸入詞彙 (支援近千個中英文名詞...)" autocomplete="off">
+        <button id="submit-btn">變出雲朵 ☁️</button>
+    </div>
+
+    <script>
+        // --- Web Audio API 聲音生成系統 ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let isSfxEnabled = true;
+        let isBgmEnabled = false; 
+        let bgmInterval;
+        let audioInitialized = false;
+
+        const C_maj = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 261.63, 329.63]; 
+        const G_maj = [196.00, 246.94, 293.66, 392.00, 293.66, 246.94, 196.00, 246.94]; 
+        const A_min = [220.00, 261.63, 329.63, 440.00, 329.63, 261.63, 220.00, 261.63]; 
+        const F_maj = [174.61, 220.00, 261.63, 349.23, 261.63, 220.00, 174.61, 220.00]; 
+        const E_min = [164.81, 196.00, 246.94, 329.63, 246.94, 196.00, 164.81, 196.00]; 
+        const D_min = [146.83, 174.61, 220.00, 293.66, 220.00, 174.61, 146.83, 174.61]; 
+
+        const notes = [
+            ...C_maj, ...G_maj, ...A_min, ...F_maj, 
+            ...C_maj, ...G_maj, ...F_maj, ...G_maj, 
+            ...A_min, ...E_min, ...F_maj, ...C_maj, 
+            ...D_min, ...G_maj, ...C_maj, ...C_maj  
+        ];
+        
+        let noteIndex = 0;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            audioInitialized = true;
+        }
+
+        function playSfx() {
+            if (!isSfxEnabled || !audioCtx) return;
+            
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            osc.frequency.setValueAtTime(300, now);
+            osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+            
+            gainNode.gain.setValueAtTime(0.3, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+            osc.start(now);
+            osc.stop(now + 0.1);
+        }
+
+        function playBgmNote() {
+            if (!isBgmEnabled || !audioCtx) return;
+            
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            osc.type = 'triangle'; 
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            osc.frequency.setValueAtTime(notes[noteIndex], now);
+            
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.05, now + 0.05); 
+            gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.45); 
+
+            osc.start(now);
+            osc.stop(now + 0.5); 
+
+            noteIndex = (noteIndex + 1) % notes.length;
+        }
+
+        function startBgm() {
+            if (!bgmInterval) {
+                bgmInterval = setInterval(playBgmNote, 250); 
+            }
+        }
+
+        function stopBgm() {
+            if (bgmInterval) {
+                clearInterval(bgmInterval);
+                bgmInterval = null;
+            }
+        }
+
+        const bgmBtn = document.getElementById('bgm-btn');
+        const sfxBtn = document.getElementById('sfx-btn');
+
+        bgmBtn.addEventListener('click', () => {
+            initAudio();
+            isBgmEnabled = !isBgmEnabled;
+            if (isBgmEnabled) {
+                bgmBtn.classList.remove('muted');
+                bgmBtn.innerHTML = '<i class="fa-solid fa-music"></i>';
+                startBgm();
+            } else {
+                bgmBtn.classList.add('muted');
+                bgmBtn.innerHTML = '<i class="fa-solid fa-music-slash"></i>';
+                stopBgm();
+            }
+        });
+
+        sfxBtn.addEventListener('click', () => {
+            initAudio();
+            isSfxEnabled = !isSfxEnabled;
+            if (isSfxEnabled) {
+                sfxBtn.classList.remove('muted');
+                sfxBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+            } else {
+                sfxBtn.classList.add('muted');
+                sfxBtn.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+            }
+        });
+
+        // --- 雲朵生成系統 ---
+        const sky = document.getElementById('sky');
+        const input = document.getElementById('item-input');
+        const btn = document.getElementById('submit-btn');
+
+        const iconMappings = {
+            'fa-dog': ['dog', '狗', '小狗', '犬', 'puppy', 'hound', '獵犬'],
+            'fa-cat': ['cat', '貓', '小貓', 'kitten', 'feline', '貓咪'],
+            'fa-horse': ['horse', '馬', '小馬', 'pony', 'stallion', 'steed', '駿馬'],
+            'fa-dove': ['bird', '鳥', '小鳥', '鴿子', 'dove', 'pigeon', '飛鳥', '孔雀', 'peacock'],
+            'fa-fish': ['fish', '魚', '小魚', '金魚', 'goldfish', 'shark', '鯊魚', 'whale', '鯨魚'],
+            'fa-cow': ['cow', '牛', '乳牛', '黃牛', 'bull', 'ox', 'cattle', 'calf'],
+            'fa-frog': ['frog', '青蛙', '蛙', 'toad', '蟾蜍', '蝌蚪', 'tadpole'],
+            'fa-spider': ['spider', '蜘蛛', 'tarantula', '毒蜘蛛'],
+            'fa-dragon': ['dragon', '龍', '恐龍', 'dinosaur', 't-rex', '暴龍'],
+            'fa-bug': ['bug', '蟲', '昆蟲', 'insect', 'beetle', '甲蟲', '螞蟻', 'ant', '蝴蝶', 'butterfly'],
+            'fa-crow': ['crow', '烏鴉', 'raven', '黑鳥', 'blackbird'],
+            'fa-hippo': ['hippo', '河馬', 'hippopotamus'],
+            'fa-otter': ['otter', '水獺', '海獺', 'beaver', '海狸'],
+            'fa-shrimp': ['shrimp', '蝦', '蝦子', 'prawn', 'lobster', '龍蝦', 'crab', '螃蟹'],
+            'fa-worm': ['worm', '蠕蟲', '蚯蚓', 'earthworm', 'caterpillar', '毛毛蟲'],
+            'fa-feather': ['feather', '羽毛', 'plume', 'quill'],
+            'fa-paw': ['paw', '腳印', '爪印', '爪子', 'claw', 'footprint', '白兔', '兔子', 'rabbit', 'bunny', '熊', 'bear'],
+            'fa-tree': ['tree', '樹', '樹木', '大樹', 'forest', '森林', 'woods', 'pine', '松樹'],
+            'fa-leaf': ['leaf', '葉子', '樹葉', '落葉', 'leaves'],
+            'fa-sun': ['sun', '太陽', '日', '陽光', 'sunlight', 'sunshine'],
+            'fa-moon': ['moon', '月亮', '月', '月球', 'crescent', '新月'],
+            'fa-mountain': ['mountain', '山', '高山', '山脈', 'hill', '山丘', 'peak', '山峰'],
+            'fa-star': ['star', '星星', '星', '恆星'],
+            'fa-cloud': ['cloud', '雲', '雲朵', '白雲', '烏雲'],
+            'fa-snowflake': ['snowflake', '雪花', '雪', 'snow', '冰', 'ice', '冰塊'],
+            'fa-fire': ['fire', '火', '火焰', 'flame', '營火', 'campfire', 'bonfire'],
+            'fa-droplet': ['water', '水', '水滴', 'drop', '雨', 'rain', '雨滴', 'raindrop', '淚', 'tear'],
+            'fa-wind': ['wind', '風', '微風', 'breeze', 'storm', '風暴', 'tornado', '龍捲風'],
+            'fa-seedling': ['seedling', '幼苗', '苗', '植物', 'plant', 'sprout', '發芽', '草', 'grass'],
+            'fa-clover': ['clover', '幸運草', '三葉草', 'shamrock'],
+            'fa-volcano': ['volcano', '火山', 'eruption', '岩漿', 'lava'],
+            'fa-meteor': ['meteor', '隕石', '流星', 'shooting star', 'comet', '彗星'],
+            'fa-car': ['car', '車', '汽車', '車子', 'automobile', 'vehicle', '計程車', 'taxi'],
+            'fa-plane': ['plane', '飛機', '客機', 'airplane', 'aircraft', 'aeroplane', 'jet', '噴射機'],
+            'fa-ship': ['ship', '船', '輪船', 'boat', '小船', 'vessel', '遊輪', 'cruise'],
+            'fa-train': ['train', '火車', '列車', '高鐵', 'subway', '地鐵', '捷運', 'metro'],
+            'fa-bicycle': ['bicycle', '腳踏車', '自行車', '單車', 'bike', 'cycling'],
+            'fa-bus': ['bus', '公車', '巴士', '客運', 'coach'],
+            'fa-truck': ['truck', '卡車', '貨車', 'lorry', 'van', '箱型車'],
+            'fa-rocket': ['rocket', '火箭', '太空船', 'spaceship', 'spacecraft', 'missile', '飛彈'],
+            'fa-motorcycle': ['motorcycle', '摩托車', '機車', '重機', 'motorbike', 'scooter'],
+            'fa-helicopter': ['helicopter', '直升機', 'chopper'],
+            'fa-sailboat': ['sailboat', '帆船', 'yacht', '遊艇'],
+            'fa-wheelchair': ['wheelchair', '輪椅'],
+            'fa-house': ['house', '房子', '房屋', '家', 'home', 'building', '建築', '小屋', 'hut', 'cabin'],
+            'fa-book': ['book', '書', '書本', '書籍', 'novel', '小說', 'dictionary', '字典', 'magazine', '雜誌'],
+            'fa-pen': ['pen', '筆', '鋼筆', '原子筆', 'pencil', '鉛筆', 'marker', '麥克筆'],
+            'fa-mobile': ['phone', '手機', '電話', 'mobile', 'cellphone', 'smartphone', '智慧型手機'],
+            'fa-desktop': ['computer', '電腦', '桌機', 'pc', 'desktop', 'screen', '螢幕', 'monitor'],
+            'fa-laptop': ['laptop', '筆電', '筆記型電腦', 'macbook', 'notebook'],
+            'fa-clock': ['clock', '時鐘', '鐘', '手錶', 'watch', '時間', 'time', 'alarm', '鬧鐘'],
+            'fa-key': ['key', '鑰匙', '鍵'],
+            'fa-door-closed': ['door', '門', '大門', 'gate', '入口', 'entrance'],
+            'fa-bed': ['bed', '床', '床鋪', 'mattress', '床墊', '棉被', 'blanket'],
+            'fa-chair': ['chair', '椅子', '座椅', 'seat', '沙發', 'sofa', 'couch', 'stool', '凳子'],
+            'fa-mug-hot': ['cup', '杯子', '馬克杯', 'mug', '茶杯', 'teacup', '咖啡', 'coffee', 'tea', '茶'],
+            'fa-spoon': ['spoon', '湯匙', '勺子'],
+            'fa-bell': ['bell', '鈴鐺', '鐘聲', '門鈴', 'doorbell'],
+            'fa-camera': ['camera', '相機', '照相機', 'photo', '照片', 'picture'],
+            'fa-umbrella': ['umbrella', '雨傘', '傘', '陽傘', 'parasol'],
+            'fa-glasses': ['glasses', '眼鏡', '墨鏡', 'sunglasses', 'goggles', '護目鏡'],
+            'fa-hammer': ['hammer', '槌子', '鐵槌', 'mallet', '木槌'],
+            'fa-wrench': ['wrench', '扳手', 'spanner', '工具', 'tool'],
+            'fa-scissors': ['scissors', '剪刀', 'shears'],
+            'fa-gift': ['gift', '禮物', '贈品', 'present', '包裹', 'package', 'box', '盒子'],
+            'fa-balloon': ['balloon', '氣球', '熱氣球'],
+            'fa-crown': ['crown', '皇冠', '王冠', 'tiara'],
+            'fa-apple-whole': ['apple', '蘋果', 'fruit', '水果'],
+            'fa-lemon': ['lemon', '檸檬', 'lime', '萊姆', 'orange', '橘子', '柳丁'],
+            'fa-carrot': ['carrot', '胡蘿蔔', '紅蘿蔔', 'vegetable', '蔬菜', 'veggie'],
+            'fa-cheese': ['cheese', '起司', '奶酪', '芝士'],
+            'fa-bread-slice': ['bread', '麵包', '吐司', 'toast', 'loaf', 'bakery'],
+            'fa-egg': ['egg', '蛋', '雞蛋', 'omelet', '煎蛋'],
+            'fa-pizza-slice': ['pizza', '披薩', '比薩'],
+            'fa-burger': ['burger', '漢堡', 'hamburger', 'cheeseburger'],
+            'fa-candy-cane': ['candy', '糖果', 'sweet', '甜點', 'chocolate', '巧克力', 'lollipops', '棒棒糖'],
+            'fa-ice-cream': ['ice-cream', '冰淇淋', '雪糕', 'popsicle', '冰棒', 'gelato'],
+            'fa-hotdog': ['hotdog', '熱狗', 'sausage', '香腸'],
+            'fa-drumstick-bite': ['meat', '肉', '雞腿', 'drumstick', 'steak', '牛排', 'pork', '豬肉', 'beef', '牛肉'],
+            'fa-bowl-food': ['bowl', '碗', '湯', 'soup', '麵', 'noodles', '飯', 'rice', 'meal', '餐點'],
+            'fa-person': ['person', '人', '人類', 'human', 'man', '男人', 'woman', '女人', 'adult', '大人'],
+            'fa-child': ['child', '小孩', '兒童', 'kid', 'boy', '男孩', 'girl', '女孩', 'student', '學生'],
+            'fa-baby': ['baby', '嬰兒', '寶寶', 'infant', 'toddler'],
+            'fa-heart': ['heart', '心', '愛心', '心臟', 'love', '愛'],
+            'fa-hand': ['hand', '手', '手掌', 'finger', '手指', 'fist', '拳頭'],
+            'fa-tooth': ['tooth', '牙齒', 'teeth', '牙'],
+            'fa-bone': ['bone', '骨頭', '骨', 'skeleton', '骨架', 'skull', '頭骨'],
+            'fa-face-smile': ['face', '臉', '臉龐', 'head', '頭', 'smile', '微笑'],
+            'fa-brain': ['brain', '大腦', '腦', 'mind', '心智'],
+            'fa-eye': ['eye', '眼睛', '眼', 'vision', '視覺'],
+            'fa-ear-listen': ['ear', '耳朵', '耳', 'hearing', '聽覺'],
+            'fa-music': ['music', '音樂', '音符', 'note', 'song', '歌曲', 'melody', '旋律'],
+            'fa-guitar': ['guitar', '吉他', 'bass', '貝斯', 'instrument', '樂器'],
+            'fa-shirt': ['shirt', '衣服', '襯衫', 't-shirt', 'clothes', '服裝', 'jacket', '外套'],
+            'fa-socks': ['socks', '襪子', 'sock', '襪'],
+            'fa-shoe-prints': ['shoe', '鞋子', 'shoes', 'boots', '靴子', 'sneakers', '運動鞋'],
+            'fa-hat-wizard': ['hat', '帽子', 'cap', '棒球帽', 'helmet', '安全帽'],
+            'fa-bag-shopping': ['bag', '包包', '袋子', '背包', 'backpack', 'purse', '錢包', 'wallet'],
+            'fa-coins': ['coin', '硬幣', '錢', 'money', 'cash', '現金', '財富', 'wealth'],
+            'fa-gem': ['gem', '寶石', '鑽石', 'diamond', 'jewel', '珠寶', 'ring', '戒指'],
+            'fa-trophy': ['trophy', '獎盃', '冠軍', 'champion', 'medal', '獎牌', 'award', '獎'],
+            'fa-flag': ['flag', '旗子', '國旗', 'banner', '旗幟'],
+            'fa-map': ['map', '地圖', '地圖', 'atlas', 'location', '地點'],
+            'fa-globe': ['globe', '地球', '地球儀', 'world', '世界', 'planet', '行星'],
+            'fa-ghost': ['ghost', '鬼', '幽靈', 'spirit', '靈魂', 'monster', '怪物'],
+            'fa-robot': ['robot', '機器人', 'bot', 'android', 'cyborg', 'ai'],
+            'fa-alien': ['alien', '外星人', 'ufo', '飛碟', 'martian', '火星人'],
+            'fa-snowman': ['snowman', '雪人', '白熊', '北極熊', 'polar bear'],
+            'fa-anchor': ['anchor', '錨', '船錨']
+        };
+
+        const shapeDict = {};
+        for (const [icon, words] of Object.entries(iconMappings)) {
+            words.forEach(word => {
+                shapeDict[word.toLowerCase()] = icon;
+            });
+        }
+
+        function createCloud(text, playSound = true) {
+            if (!text.trim()) return;
+
+            if (playSound) {
+                initAudio();
+                playSfx();
+                
+                if (isBgmEnabled && !bgmInterval) {
+                    startBgm();
+                }
+            }
+
+            const lowerText = text.toLowerCase().trim();
+            const iconClass = shapeDict[lowerText] ? `fa-solid ${shapeDict[lowerText]}` : 'fa-solid fa-cloud';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'cloud-wrapper';
+
+            const inner = document.createElement('div');
+            inner.className = 'cloud-inner';
+
+            const shape = document.createElement('i');
+            shape.className = `${iconClass} cloud-shape`;
+            inner.appendChild(shape);
+
+            const label = document.createElement('div');
+            label.className = 'cloud-label';
+            label.innerText = text;
+            inner.appendChild(label);
+            
+            wrapper.appendChild(inner);
+
+            const scale = Math.random() * 0.8 + 0.4; 
+            
+            // Reduced base duration so it moves a bit faster and loops more frequently
+            const baseDuration = 20; 
+            const durationX = baseDuration / scale + (Math.random() * 4 - 2); 
+            const zIndex = Math.floor(scale * 10);
+
+            const durationY = Math.random() * 3 + 4; 
+            const delayY = Math.random() * -5; 
+
+            const topPosition = Math.random() * 60 + 15; 
+
+            wrapper.style.setProperty('--cloud-scale', scale);
+            wrapper.style.top = `${topPosition}%`;
+            wrapper.style.animationDuration = `${durationX}s`;
+            wrapper.style.zIndex = zIndex;
+
+            inner.style.animationDuration = `${durationY}s`;
+            inner.style.animationDelay = `${delayY}s`;
+
+            if (scale < 0.7) {
+                shape.style.opacity = scale + 0.3;
+            }
+
+            sky.appendChild(wrapper);
+        }
+
+        btn.addEventListener('click', () => {
+            createCloud(input.value);
+            input.value = '';
+            input.focus();
+        });
+
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                createCloud(input.value);
+                input.value = '';
+            }
+        });
+
+        window.onload = () => {
+            // No initial clouds
+        };
+    </script>
+</body>
+</html>
